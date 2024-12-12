@@ -43,14 +43,14 @@ There is certainly a lot to do for this project. Despite the comment made at the
 ## Concrete Things
 These are straight-forward things that are a one-and-done.
 
-- [] Implement a batch-like system for rendering objects (I believe this is roughly how Raylib does it).
-- [] Implement rendering of shapes.
-- [] Have a different interface for specifying callbacks that doesn't make the user interact with glfw or GL in any way.
+- [ ] Implement a batch-like system for rendering objects (I believe this is roughly how Raylib does it).
+- [ ] Implement rendering of shapes.
+- [ ] Have a different interface for specifying callbacks that doesn't make the user interact with glfw or GL in any way.
 
 
 ## Abstract Things
 These are less straight-forward and are essentially stylistic and other non-important changes/considerations I want to make.
 
-- [] Consider how to better handle errors. I may consider a sort of error union/optional type thing like Zig.
-- [] Consider what I want to do about naming.
+- [ ] Consider how to better handle errors. I may consider a sort of error union/optional type thing like Zig.
+- [ ] Consider what I want to do about naming.
 - * Specifically about prefixes of functions/types I want to keep hidden. For instance, a.t.m. `chgl` is the prefix for internal functions that interact with glfw/GL, as well as for all types. I may want to change this to avoid confusion.
