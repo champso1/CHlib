@@ -22,7 +22,6 @@ int main() {
 	    
 		DrawRectangle(100, 100, 100, 100, CL_COLOR_BLUE);
 		DrawRectangle(300, 300, 100, 100, CL_COLOR_RED);
-		fprintf(stderr, "\nNumber of shapes: %u\n", RENDER_BATCH.num_shapes);
 		RenderAll();
 
 		// advance!
