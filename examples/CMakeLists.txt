@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(example)
+project(chlib_examples)
 
 
 find_package(CHlib REQUIRED)
@@ -13,6 +13,6 @@ endif()
 
 message("** Building ${BUILD_EXAMPLE}.c ...")
 
-add_executable(example ${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_EXAMPLE}.c)
-target_link_libraries(example PRIVATE CHlib::CHlib)
+add_executable(main ${CMAKE_CURRENT_SOURCE_DIR}/${BUILD_EXAMPLE}.c)
+target_link_libraries(main PRIVATE CHlib::CHlib)
 
