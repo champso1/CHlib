@@ -283,6 +283,21 @@ typedef struct _clVec4f clColorRGBAf;
 
 
 
+// colors for printing to the terminal
+#define ANSI_COLOR_RED         "\x1b[31m"
+#define ANSI_COLOR_GREEN       "\x1b[32m"
+#define ANSI_COLOR_YELLOW      "\x1b[33m"
+#define ANSI_COLOR_BLUE        "\x1b[34m"
+#define ANSI_COLOR_MAGENTA     "\x1b[35m"
+#define ANSI_COLOR_CYAN        "\x1b[36m"
+
+#define ANSI_COLOR_RESET       "\x1b[0m"
+
+
+
+// used when comparing floats
+#define CL_MIN_FLOAT_THRESHOLD 0.00001F
+
 
 
 // --------------------
@@ -313,18 +328,17 @@ extern clGlobalState GLOBAL_STATE;
 
 // stores all information relevent for rendering an object
 // with GL
-
-
 typedef struct _RenderObject {
+	u8 id;
 	clColorRGBAf color;
-	GLint color_uniform_loc;
 	GLuint vao, vbo, ebo;
 	f32* vertices;
 	u32* elements;
 } RenderObject;
 
 
-
+// stores required rendering info and other
+// human-readable info about the shape itself
 typedef struct _Shape {
 	RenderObject ro;
 	enum ShapeType {
@@ -339,7 +353,7 @@ typedef struct _Shape {
 } Shape;
 
 
-
+// stores a list of shapes to render each frame
 typedef struct _RenderBatch {
 	Shape shapes[16];
 	u8 num_shapes;
@@ -347,6 +361,18 @@ typedef struct _RenderBatch {
 
 
 
+// stores either a valid ro or else is_valid is false
+// based on whether or not a proposed RO
+// already exists
+typedef struct _BatchProposal {
+	clBool is_valid;
+	RenderObject ro;
+} BatchProposal;
+
+
+
+
+// global render batch
 extern RenderBatch RENDER_BATCH;
 
 
@@ -411,6 +437,20 @@ extern GLFWwindow* chglInitGLFW(u32 width, u32 height, const char* title);
 // Deinitializes glfw in the normal way and sets global states to defaults.
 extern void chglDeinitGLFW(GLFWwindow* window);
 
+
+
+
+
+
+
+// could these names be any longer???
+#define CL_DEFSHDR_NUM_VERTICES     8
+#define CL_DEFSHDR_NUM_ELEMENTS     6
+#define CL_DEFSHDR_POS_LOC          0
+#define CL_DEFSHDR_COLOR_LOC        1
+
+
+
 // Internal function to create default shader program.
 extern GLuint chglCreateDefaultShaderProgram();
 // Internal function to delete default shader program.
@@ -431,9 +471,24 @@ extern clError chglRenderBatchInit();
 extern void    chglRenderBatchDeinit();
 
 
-// copies data to GPU and returns a finalized render object
-// containing all information needed for rendering
-extern RenderObject chglCreateRenderObject(f32* vertices, u32* elements, clColorRGBAf);
+// returns true if the contents of the two render objects are identical
+// used to accept/deny render proposals
+extern clBool chglAreRenderObjectsIdentical(
+    RenderObject* ro,
+    f32* vertices_proposed,
+    u32* elements_proposed,
+    clColorRGBAf color_proposed
+);
+
+
+// essentialy returns either a valid render object,
+// or something indicating it is not valid
+// which would happen if the render object already exists
+// in the batch
+// this seems like a lot to do each frame, but oh well.
+extern BatchProposal chglProposeRenderObject(f32* vertices, u32* elements, clColorRGBAf color);
+
+
 // adds the shape to the batch
 extern clError chglRenderBatchAddShape(Shape shape);
 // render all batched render objects

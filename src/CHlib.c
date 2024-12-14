@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "Utils.h"
+
 
 
 
@@ -113,13 +115,13 @@ void chglDeinitGLFW(GLFWwindow* window) {
 
 const static char* default_vs_source =
 	"#version 430 core\n"
-	"in vec2 v_in_pos;\n"
+	"layout (location = 0) in vec2 v_in_pos;\n"
 	"void main() {\n"
     "    gl_Position = vec4(v_in_pos, 0.0, 1.0);\n"
 	"}";
 const static char* default_fs_source =
 	"#version 430 core\n"
-	"uniform vec3 u_color;\n"
+	"layout (location = 1) uniform vec3 u_color;\n"
 	"out vec4 out_color;\n"
 	"void main() {\n"
 	"    out_color = vec4(u_color, 1.0);\n"
@@ -269,11 +271,13 @@ clBool IsKeyDown(u32 key) {
 
 
 RenderBatch RENDER_BATCH = { 0 };
-
+static u8 id;
 
 
 
 clError chglRenderBatchInit() {
+	id = 0;
+	
 	// RENDER_BATCH = { 0 } takes care of this in principle
 	// but just to be safe
 	// it's only called once, anyways
@@ -295,55 +299,96 @@ void chglRenderBatchDeinit() {
 
 
 
+clBool chglAreRenderObjectsIdentical(
+    RenderObject* ro,
+    f32* vertices_proposed,
+    u32* elements_proposed,
+    clColorRGBAf color_proposed
+) {
+	clBool is_identical = true;
 
-RenderObject chglCreateRenderObject(f32* vertices, u32* elements, clColorRGBAf color) {
+	// we don't want to check the colors since 
+	// at this stage that won't be happening,
+	// and it wil be sufficient to only check the actual GPU data
+	// additionally, the elements will be the same for any rectangle
+	
+	for (int i=0; i<CL_DEFSHDR_NUM_VERTICES; i++) {
+		is_identical = is_identical & (vertices_proposed[i] - ro->vertices[i] < CL_MIN_FLOAT_THRESHOLD);
+	}
+	if (is_identical) {
+		fprintf(stderr, "[INFO] Proposed render object vertices are the same as [ID = %u].\n", ro->id);
+	}
+
+	return is_identical;
+	
+}
+
+
+
+BatchProposal chglProposeRenderObject(f32* vertices, u32* elements, clColorRGBAf color) {
+	
+	// before we do anything, we want to check if an identical object already exists
+	// or if we are already full on objects
+	for (int i=0; i<RENDER_BATCH.num_shapes; i++) {
+		RenderObject ro = RENDER_BATCH.shapes[i].ro;
+		clBool is_identical = chglAreRenderObjectsIdentical(&ro, vertices, elements, color);
+		clBool at_cap = RENDER_BATCH.num_shapes == 16;
+		if (is_identical || at_cap) {
+			LOG_MESSAGE(LOG_INFO, "Render object rejected.\n");
+			return (BatchProposal){
+				.is_valid = false,
+				.ro = { 0 },
+			};
+		}
+	}
+	// otherwise, on with it!
+	
+	
 	RenderObject ro = { 0 };
 	GLuint vao, vbo, ebo;
-	
-	const GLint in_pos_loc = glGetAttribLocation(GLOBAL_STATE.default_shader_prog, "v_in_pos");
-	const GLint u_color_loc = glGetUniformLocation(GLOBAL_STATE.default_shader_prog, "u_color");
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	
+	u32 vertex_buffer_size = CL_DEFSHDR_NUM_VERTICES * (sizeof *vertices);
+	u32 element_buffer_size = CL_DEFSHDR_NUM_ELEMENTS * (sizeof *elements);
     
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, 8 * (sizeof *vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertices, GL_STATIC_DRAW);
 
 	glGenBuffers(1, &ebo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * (sizeof *elements), elements, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, element_buffer_size, elements, GL_STATIC_DRAW);
    
-	glEnableVertexAttribArray(in_pos_loc);
-	glVertexAttribPointer(in_pos_loc, 2, GL_FLOAT, GL_FALSE, 2 * (sizeof *vertices), (void*)0);
+	glEnableVertexAttribArray(CL_DEFSHDR_POS_LOC);
+	glVertexAttribPointer(CL_DEFSHDR_POS_LOC, 2, GL_FLOAT, GL_FALSE, 2 * (sizeof *vertices), (void*)0);
 	
-
+	ro.id = id++;
 	ro.vao = vao;
 	ro.vbo = vbo;
 	ro.ebo = ebo;
-	
 	ro.color = color;
-	ro.color_uniform_loc = u_color_loc;
 
-	ro.vertices = malloc(8 * (sizeof *vertices));
-	memcpy(ro.vertices, vertices, 8 * (sizeof *vertices));
+	ro.vertices = malloc(vertex_buffer_size);
+	memcpy(ro.vertices, vertices, vertex_buffer_size);
 
-	ro.elements = malloc(6 * (sizeof *elements));
-	memcpy(ro.elements, elements, 6 * (sizeof *elements));
+	ro.elements = malloc(element_buffer_size);
+	memcpy(ro.elements, elements, element_buffer_size);
 
-	return ro;
+	return (BatchProposal){
+		.is_valid = true,
+		.ro = ro,
+	};
 }
 
 
 
 
 clError chglRenderBatchAddShape(Shape shape) {
-	// just want to get this working
-	// only allow 1 render object in here
-	if (RENDER_BATCH.num_shapes >= 1) {
-		return CL_OKAY;
-	}
+	fprintf(stderr, "[INFO]Adding shape:\n");
+	chglPrintShape(shape);
 	RENDER_BATCH.shapes[RENDER_BATCH.num_shapes++] = shape;
 	
 	return CL_OKAY;
@@ -354,14 +399,12 @@ clError chglRenderBatchAddShape(Shape shape) {
 
 clError chglRenderBatchRenderAll() {
 	for (u8 i=0; i<RENDER_BATCH.num_shapes; i++) {
-		chglPrintShape(&RENDER_BATCH.shapes[i]);
 		RenderObject ro = RENDER_BATCH.shapes[i].ro;
 
 		glUseProgram(GLOBAL_STATE.default_shader_prog);
 		
 		glBindVertexArray(ro.vao);
-		// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ro.ebo);
-		glUniform3f(ro.color_uniform_loc, ro.color.r, ro.color.g, ro.color.b);
+		glUniform3f(CL_DEFSHDR_COLOR_LOC, ro.color.r, ro.color.g, ro.color.b);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	}
 	return CL_OKAY;
@@ -383,8 +426,6 @@ Shape chglMakeRect(RenderObject ro, f32 x, f32 y, f32 w, f32 h) {
 
 
 void chglPrintShape(Shape shape) {
-	if (shape.printed) return;
-	
 	printf("---------- SHAPE ----------\n");
 	printf("VAO: %u, VBO: %u, EBO: %u\n", shape.ro.vao, shape.ro.vbo, shape.ro.ebo);
 	printf("Type: ");
@@ -398,11 +439,11 @@ void chglPrintShape(Shape shape) {
 	printf("Color: (r,g,b) -> (%.2f, %.2f, %.2f)\n", shape.ro.color.r, shape.ro.color.g, shape.ro.color.b);
 
 	printf("Raw vertex data: [ ");
-	for (int i=0; i<8; i++) {
+	for (int i=0; i<CL_DEFSHDR_NUM_VERTICES; i++) {
 		printf("%.2f ", shape.ro.vertices[i]);
 	}
 	printf("]\nRaw element data: [ ");
-	for (int i=0; i<6; i++) {
+	for (int i=0; i<CL_DEFSHDR_NUM_ELEMENTS; i++) {
 		printf("%u ", shape.ro.elements[i]);
 	}
 	printf("]\n");
@@ -436,6 +477,12 @@ clError DrawRectangleVec(clPoint2f pos, clVec2f size, clColorRGBAf color) {
 	f32 w = size.w, h = size.h;
 	f32 r = color.r, g = color.g, b = color.b;
 
+	// some error checking
+	if ((x < -1.0f || y < -1.0f) || (x+w > 1.0f || y+h > 1.0f) || (r > 1.0f || g > 1.0f || b > 1.0f)) {
+		fprintf(stderr, "[ERROR] Invalid rectangle dimensions/color.\n");
+		return CL_ERROR;
+	}
+
 	f32 vertices[] = {
 	    x+w, y+h,
 		x+w, y  ,
@@ -446,9 +493,15 @@ clError DrawRectangleVec(clPoint2f pos, clVec2f size, clColorRGBAf color) {
 		0, 1, 3,
 		1, 2, 3
 	};
+
+	BatchProposal proposal = chglProposeRenderObject(vertices, elements, color);
+
+	if (!proposal.is_valid) {
+		fprintf(stderr, "[INFO] Invalid batch proposal.\n");
+		return CL_OKAY;
+	}
 	
-	RenderObject ro = chglCreateRenderObject(vertices, elements, color);
-	Shape rect = chglMakeRect(ro, x, y, w, h);
+	Shape rect = chglMakeRect(proposal.ro, x, y, w, h);
 	chglRenderBatchAddShape(rect);
 
 	return CL_OKAY;

@@ -2,3 +2,4 @@ build/
 install/
 examples/build
 res/
+*#*
