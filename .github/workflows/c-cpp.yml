@@ -1,0 +1,21 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: mkdir build
+      run: mkdir build
+    - name: cmake -S . -B ./build
+      run: cmake -S . -B ./build
+    - name: cmake --build ./build
+      run: cmake --build ./build
