@@ -1,5 +1,5 @@
-build/
 install/
-examples/build
+build
 res/
 *#*
+tests/

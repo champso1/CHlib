@@ -11,8 +11,6 @@ const size_t win_h = 480;
 int main() {
 
 	InitCHlib(640, 480, "Example 1");
-
-	char input_buf[64];
 		
 	while (!WindowShouldClose()) {
 		// close the window when Q is pressed
@@ -23,10 +21,6 @@ int main() {
 		DrawRectangle(100, 100, 100, 100, CL_COLOR_BLUE);
 		DrawRectangle(300, 300, 100, 100, CL_COLOR_RED);
 		RenderAll();
-
-		// advance!
-		fgets(input_buf, 64, stdin);
-		if (!strncmp(input_buf, "quit", 4)) SetWindowShouldClose();
 	}
     
     DeinitCHlib();
