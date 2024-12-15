@@ -15,9 +15,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: mkdir build
       run: mkdir build
-    - name: cd build
-      run: cd ./build
-    - name: cmake ..
-      run: cmake ..
-    - name: cmake --build .
-      run: cmake --build .
+    - name: cmake -S . -B ./build
+      run: cmake -S . -B ./build
+    - name: cmake --build ./build
+      run: cmake --build ./build
