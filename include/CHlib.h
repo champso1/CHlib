@@ -43,6 +43,89 @@ typedef enum _clBool clBool;
 
 
 
+
+// -------------------------
+//   Vectors/Colors/Math
+// ------------------------
+
+struct _clVec2f { // Basic vector type
+	union {
+		struct { f32 x, y; };
+		struct { f32 w, h; };
+	};
+};
+typedef struct _clVec2f clVec2f;
+typedef struct _clVec2f clPoint2f;
+
+
+struct _clVec2u32 {
+	union {
+		struct { u32 x, y; };
+		struct { u32 w, h; };
+	};
+};
+typedef struct _clVec2u32 clVec2u32;
+typedef struct _clVec2u32 clPoint2u32;
+
+
+struct _clVec3f {
+	union {
+		struct { float x, y, z; };
+		struct { float r, g, b; };
+	};
+};
+typedef struct _clVec3f clVec3f;
+typedef struct _clVec3f clPoint3f;
+typedef struct _clVec3f clColorRGBf;
+
+
+// not really feasible to define this as a point,
+// since it only goes up to 255
+struct _clVec3u8 {
+	u8 r, g, b;
+};
+typedef struct _clVec3u8 clVec3u8;
+typedef struct _clVec3u8 clColorRGBu8;
+
+
+struct _clVec3u32 {
+	u32 x, y, z;
+};
+typedef struct _clVec3u32 clVec3u32;
+typedef struct _clVec3u32 clPoint3u32;
+
+
+struct _clVec4u8 {
+	u8 r, g, b, a;
+};
+typedef struct _clVec4u8 clVec4u8;
+typedef struct _clVec4u8 clColorRGBAu8;
+
+
+struct _clVec4f {
+	float r, g, b, a;
+};
+typedef struct _clVec4f clVec4f;
+typedef struct _clVec4f clColorRGBAf;
+
+
+
+// Some default colors:
+#define CL_COLOR_BLACK       (clColorRGBAu8){0, 0, 0, 0}
+#define CL_COLOR_WHITE       (clColorRGBAu8){0xFF, 0xFF, 0xFF, 0xFF}
+#define CL_COLOR_BLUE        (clColorRGBAu8){0x00, 0x00, 0xFF, 0xFF}
+#define CL_COLOR_GREEN       (clColorRGBAu8){0x00, 0xFF, 0x00, 0xFF}
+#define CL_COLOR_RED         (clColorRGBAu8){0xFF, 0x00, 0x00, 0xFF}
+#define CL_COLOR_DARKGRAY    (clColorRGBAu8){0x18, 0x18, 0x18, 0x18}
+
+#define CL_DEFAULT_BG_COLOR  CL_COLOR_DARKGRAY
+
+
+// used when comparing floats
+#define CL_MIN_FLOAT_THRESHOLD 0.00001F
+
+
+
 // --------------------
 //       INPUT
 // --------------------
@@ -204,92 +287,6 @@ typedef enum _clBool clBool;
 
 
 
-// --------------------
-//      Vectors
-// --------------------
-
-struct _clVec2f { // Basic vector type
-	union {
-		struct { f32 x, y; };
-		struct { f32 w, h; };
-	};
-};
-typedef struct _clVec2f clVec2f;
-typedef struct _clVec2f clPoint2f;
-
-
-struct _clVec2u32 {
-	union {
-		struct { u32 x, y; };
-		struct { u32 w, h; };
-	};
-};
-typedef struct _clVec2u32 clVec2u32;
-typedef struct _clVec2u32 clPoint2u32;
-
-
-struct _clVec3f {
-	union {
-		struct { float x, y, z; };
-		struct { float r, g, b; };
-	};
-};
-typedef struct _clVec3f clVec3f;
-typedef struct _clVec3f clPoint3f;
-typedef struct _clVec3f clColorRGBf;
-
-
-// not really feasible to define this as a point,
-// since it only goes up to 255
-struct _clVec3u8 {
-	u8 r, g, b;
-};
-typedef struct _clVec3u8 clVec3u8;
-typedef struct _clVec3u8 clColorRGBu8;
-
-
-struct _clVec3u32 {
-	u32 x, y, z;
-};
-typedef struct _clVec3u32 clVec3u32;
-typedef struct _clVec3u32 clPoint3u32;
-
-
-struct _clVec4u8 {
-	u8 r, g, b, a;
-};
-typedef struct _clVec4u8 clVec4u8;
-typedef struct _clVec4u8 clColorRGBAu8;
-
-
-struct _clVec4f {
-	float r, g, b, a;
-};
-typedef struct _clVec4f clVec4f;
-typedef struct _clVec4f clColorRGBAf;
-
-
-
-// Some default colors:
-#define CL_COLOR_BLACK       (clColorRGBAu8){0, 0, 0, 0}
-#define CL_COLOR_WHITE       (clColorRGBAu8){0xFF, 0xFF, 0xFF, 0xFF}
-#define CL_COLOR_BLUE        (clColorRGBAu8){0x00, 0x00, 0xFF, 0xFF}
-#define CL_COLOR_GREEN       (clColorRGBAu8){0x00, 0xFF, 0x00, 0xFF}
-#define CL_COLOR_RED         (clColorRGBAu8){0xFF, 0x00, 0x00, 0xFF}
-#define CL_COLOR_DARKGRAY    (clColorRGBAu8){0x18, 0x18, 0x18, 0x18}
-
-#define CL_DEFAULT_BG_COLOR  CL_COLOR_DARKGRAY
-
-
-
-
-
-
-
-
-// used when comparing floats
-#define CL_MIN_FLOAT_THRESHOLD 0.00001F
-
 
 
 // --------------------
@@ -312,54 +309,46 @@ extern clGlobalState GLOBAL_STATE;
 
 
 
-
 // --------------------
 //     Rendering
 // --------------------
 
 
+struct _RenderObject;
+
+// each render object should define its own render function
+typedef void (*pRenderFn)(struct _RenderObject*);
+
 // stores all information relevent for rendering an object
 // with GL
 typedef struct _RenderObject {
-	u8 id;
-	clColorRGBAf color;
-	GLuint vao, vbo, ebo;
-	f32* vertices;
-	u32* elements;
+	u8 id;                  // unique ID given to each RO
+	u32 shader_id;          // the id of the shader this object uses
+	clColorRGBAf color;     // color it should be drawn as
+	GLuint vao, vbo, ebo;   // GL objects
+	f32* vertices;          // raw vertex data
+	GLuint tex2d;           // id of a texture
+	pRenderFn render_fn;    // function describing how to render this object
 } RenderObject;
 
 
-// stores required rendering info and other
-// human-readable info about the shape itself
-typedef struct _Shape {
-	RenderObject ro;
-	enum ShapeType {
-		SHAPE_RECTANGLE,
-		SHAPE_CIRCLE,         // TODO: Implement circles?
-	} shape_type;
-	f32 x, y;
-	union {
-		struct { f32 w, h; }; // SHAPE_RECTANGLE
-		struct { f32 r; };    // SHAPE_CIRCLE
-	};
-} Shape;
 
 
-// stores a list of shapes to render each frame
+
+// default number of items to initialze the render batch arrays
+#define CL_RB_DEFAULT_SIZE 16
+
+// stores a list of renderobjects
+// and associated shader programs
 typedef struct _RenderBatch {
-	Shape shapes[16];
-	u8 num_shapes;
+	RenderObject* ros;
+	u32 num_ros;
+	u32 ros_cap; // capacity of array
+	
+	GLuint* shaders;
+	u32 num_shaders;
+	u32 shaders_cap; // capacity of array
 } RenderBatch;
-
-
-
-// stores either a valid ro or else is_valid is false
-// based on whether or not a proposed RO
-// already exists
-typedef struct _BatchProposal {
-	clBool is_valid;
-	RenderObject ro;
-} BatchProposal;
 
 
 
@@ -371,26 +360,9 @@ extern RenderBatch RENDER_BATCH;
 
 
 
-
-
-
-
-
-
-/***************************************************/
-//-------------------------------------------------//
-//                 All API calls.                  //
-//-------------------------------------------------//
-/***************************************************/
-
-
-
-
-
-
 // converts from (0,win_[w,h]) to (-1,1)
 // assumes window coordinate's origin is at the top left
-extern clPoint2f coordsWindowToGLFW(clPoint2u32 in, u32 win_w, u32 win_h);
+extern clPoint2f coordsWindowToGLFW(clPoint2u32 in);
 
 // converts color from 0-255 to 0.0-1.0
 extern clColorRGBf  colorRGBNormalize(clColorRGBu8 color);
@@ -431,22 +403,26 @@ extern void chglDeinitGLFW(GLFWwindow* window);
 
 
 
+// --------------------
+//     Shaders
+// --------------------
+
+#define CL_DEF_SHDR_ID    0 // id given to the default shader
 
 
-
-
-// could these names be any longer???
-#define CL_DEFSHDR_NUM_VERTICES     8
-#define CL_DEFSHDR_NUM_ELEMENTS     6
-#define CL_DEFSHDR_POS_LOC          0
-#define CL_DEFSHDR_COLOR_LOC        1
-
+#define CL_GRID_SHDR_VS_PATH "./res/grid.vs"
+#define CL_GRID_SHDR_FS_PATH "./res/grid.fs"
 
 
 // Internal function to create default shader program.
 extern GLuint chglCreateDefaultShaderProgram();
-// Internal function to delete default shader program.
-extern void chglDeleteDefaultShaderProgram(GLuint shader_prog);
+// Load a different shader from a file.
+extern GLuint chglCreateShaderProgram(const u8* vs_data, const u8* fs_data);
+// adds the shader program into the global state's list of shaders
+// returns its ID
+extern u32 chglAddShaderProgram(GLuint shader_prog);
+// Internal function to delete a shader program.
+extern void chglDeleteShaderProgram(GLuint shader_prog);
 
 
 
@@ -462,35 +438,12 @@ extern clError chglRenderBatchInit();
 // frees all render batch memory
 extern void    chglRenderBatchDeinit();
 
+// adds a render object to the batch
+extern void    chglAddRenderObject(RenderObject ro);
 
-// returns true if the contents of the two render objects are identical
-// used to accept/deny render proposals
-extern clBool chglAreRenderObjectsIdentical(
-    RenderObject* ro,
-    f32* vertices_proposed,
-    u32* elements_proposed,
-    clColorRGBAf color_proposed
-);
-
-
-// essentialy returns either a valid render object,
-// or something indicating it is not valid
-// which would happen if the render object already exists
-// in the batch
-// this seems like a lot to do each frame, but oh well.
-extern BatchProposal chglProposeRenderObject(f32* vertices, u32* elements, clColorRGBAf color);
-
-
-// adds the shape to the batch
-extern clError chglRenderBatchAddShape(Shape shape);
 // render all batched render objects
-extern clError chglRenderBatchRenderAll();
-
-
-// forms a full shape object
-extern Shape chglMakeRect(RenderObject ro, f32 x, f32 y, f32 w, f32 h);
-// helper function for debugging
-extern void chglPrintShape(Shape shape);
+// just calls the RO's render function
+extern void    chglRenderBatchRenderAll();
 
 
 
@@ -500,10 +453,7 @@ extern void chglPrintShape(Shape shape);
 // Final API
 //
 // NOTE: These are the only functions that are not camelCase
-//       They also _do_ (expectedly) interact with the global state.
-//       This is done via passing global state pointers to `chgl`
-//         prefixed funcs.
-//       They are still allowed to interact with GLFW/GL
+//       and are the ones the user is expceted to use
 // --------------------
 
 // initializes GLFW and some global state variables
@@ -511,7 +461,7 @@ extern void chglPrintShape(Shape shape);
 // essentially everything that is needed to do a draw call
 extern clError InitCHlib(u32 win_w, u32 win_h, const char* title);
 // renders all RenderObjects within the current RenderBatch
-// as well as any other glfw loop-by-loop basis
+// as well as any other glfw loop-by-loop basis things
 extern clError RenderAll();
 // frees all memory and GLFW-related stuff
 extern clError DeinitCHlib();
@@ -526,28 +476,40 @@ extern void SetWindowShouldClose();
 extern clError SetBackgroundColor(clColorRGBAu8 color);
 
 
-// checks if the given key is pressed
-extern clBool IsKeyDown(u32 key);
+
+
+// defines how to render the grid
+extern void pGridRender(RenderObject* ro);
+
+// initialies and displays a grid on the screen
+// split up into w columns and h rows
+// where the color in the i'th row and j'th column is given by
+// colors[i*w + j]
+// NOTE: assumes that the user calls this only once,
+// and especially not in the render loop!
+extern void MakeGrid(u32 w, u32 h, clColorRGBAu8* colors);
 
 
 
 
 
+#define CL_RECT_VS_SHADER "./res/rect.vs"
+#define CL_RECT_FS_SHADER "./res/rect.fs"
+
+#define MAX_RECTBUFFER_SIZE 8
+extern RenderObject rectBuffer[MAX_RECTBUFFER_SIZE];
+extern u8 numRectangles;
 
 
+// loads shaders
+extern u32 chglInitRectangles();
 
+extern void pRectRender(RenderObject* ro);
 
-
-
-
-
-
-
-
-extern clError DrawRectangle(u32 x, u32 y, u32 w, u32 h, clColorRGBAu8 color);
-extern clError DrawRectangleVec(clPoint2f pos, clVec2f size, clColorRGBAf color);
-
-
+// draws a rectangle to the screen.
+// NOTE: assumes that the use calls this only once,
+// and especially not in the render loop!
+extern void DrawRectangle(u32 x, u32 y, u32 w, u32 h, clColorRGBAu8 color);
 
 
 

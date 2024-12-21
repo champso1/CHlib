@@ -16,10 +16,10 @@
 // BASIC DEFINES / GENERIC UTILS
 // --------------------
 
-clPoint2f coordsWindowToGLFW(clPoint2u32 in, u32 win_w, u32 win_h) {
+clPoint2f coordsWindowToGLFW(clPoint2u32 in) {
 	clPoint2f vec = {
-		.x = (float)in.x/(float)(win_w/2) - 1.0f,
-		.y = (float)in.y/(float)(win_h/2) - 1.0f
+		.x = (float)in.x/(float)(GLOBAL_STATE.win_w/2) - 1.0f,
+		.y = (float)in.y/(float)(GLOBAL_STATE.win_h/2) - 1.0f
 	};
 	return vec;
 }
@@ -59,12 +59,12 @@ void defaultFramebufferSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 void defaultErrorCallback(int error, const char* description) {
-	fprintf(stderr, "[ERROR] (GLFW - ID: %d) %s\n", description);
+	LOG_MESSAGE(LOG_ERROR, "(GLFW - ID: %d) %s\n", error, description);
 }
 
 void defaultKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	// all we want to do is close the window should we press ESC or Q:
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	if ((key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
@@ -90,7 +90,7 @@ GLFWwindow* chglInitGLFW(u32 width, u32 height, const char* title) {
 
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL) {
-        fprintf(stderr, "[ERROR] Could not create window.\n");
+		LOG_MESSAGE(LOG_ERROR, "Could not create window.\n");
         return NULL;
     }
 
@@ -113,64 +113,110 @@ void chglDeinitGLFW(GLFWwindow* window) {
 }
 
 
-const static char* default_vs_source =
-	"#version 430 core\n"
-	"layout (location = 0) in vec2 v_in_pos;\n"
-	"void main() {\n"
-    "    gl_Position = vec4(v_in_pos, 0.0, 1.0);\n"
-	"}";
-const static char* default_fs_source =
-	"#version 430 core\n"
-	"layout (location = 1) uniform vec3 u_color;\n"
-	"out vec4 out_color;\n"
-	"void main() {\n"
-	"    out_color = vec4(u_color, 1.0);\n"
-	"}";
 
-GLuint chglCreateDefaultShaderProgram() {
+
+
+
+
+
+
+GLuint chglCreateShaderProgram(const u8* vs_data, const u8* fs_data) {
 	GLuint success = 0;
     char infoLog[512] = "";
 
     const GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &default_vs_source, NULL);
+	// this cast is so GCC shuts the eff up!
+    glShaderSource(vs, 1, (const GLchar* const*)&vs_data, NULL);
     glCompileShader(vs);
     glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
     if (success == 0) {
         glGetShaderInfoLog(vs, 512, NULL, infoLog);
-        fprintf(stderr, "[ERROR] Vertex shader compilation failed.\n");
+		LOG_MESSAGE(LOG_ERROR, "Vertex shader compilation failed.\n");
+		LOG_MESSAGE(LOG_INFO, "Reason(s) for above error(s):\n%s", infoLog);
         exit(1);
     }
 
     const GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &default_fs_source, NULL);
+    glShaderSource(fs, 1, (const GLchar* const*)&fs_data, NULL);
     glCompileShader(fs);
     glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
     if (success == 0) {
         glGetShaderInfoLog(fs, 512, NULL, infoLog);
-        fprintf(stderr, "[ERROR] Fragment shader compilation failed.\n");
+		LOG_MESSAGE(LOG_ERROR, "Fragment shader compilation failed.\n");
+		LOG_MESSAGE(LOG_INFO, "Reason(s) for above error(s):\n%s", infoLog);
         exit(1);
     }
 
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-    glGetShaderiv(prog, GL_LINK_STATUS, &success);
+    GLuint shader_prog = glCreateProgram();
+    glAttachShader(shader_prog, vs);
+    glAttachShader(shader_prog, fs);
+    glLinkProgram(shader_prog);
+    glGetShaderiv(shader_prog, GL_LINK_STATUS, &success);
     if (success == 0) {
         glGetProgramInfoLog(vs, 512, NULL, infoLog);
-        fprintf(stderr, "[ERROR] Shader program linking failed.\n");
+		LOG_MESSAGE(LOG_ERROR, "Shader program linking failed.\n");
+		LOG_MESSAGE(LOG_INFO, "Reason(s) for above error(s):\n%s", infoLog);
         exit(1);
     }
     
     glDeleteShader(vs);
     glDeleteShader(fs);
 
-	return prog;
+	return shader_prog;
 }
 
-void chglDeleteDefaultShaderProgram(GLuint shader_prog) {
+
+
+
+
+
+
+GLuint chglCreateDefaultShaderProgram() {
+	const char* default_vs_data =
+		"#version 430 core\n"
+		"layout (location = 0) in vec2 v_in_pos;\n"
+		"void main() {\n"
+		"    gl_Position = vec4(v_in_pos, 0.0, 1.0);\n"
+		"}";
+	const char* default_fs_data =
+		"#version 430 core\n"
+		"layout (location = 1) uniform vec3 u_color;\n"
+		"out vec4 out_color;\n"
+		"void main() {\n"
+		"    out_color = vec4(u_color, 1.0);\n"
+		"}";
+
+	GLuint shader_prog = chglCreateShaderProgram(default_vs_data, default_fs_data);
+	return shader_prog;
+}
+
+
+
+u32 chglAddShaderProgram(GLuint shader_prog) {
+	// double the size of the array if necessary
+	if (RENDER_BATCH.num_shaders == RENDER_BATCH.shaders_cap) {
+		RENDER_BATCH.shaders_cap *= 2;
+		RENDER_BATCH.shaders = realloc(RENDER_BATCH.shaders, RENDER_BATCH.shaders_cap * (sizeof *RENDER_BATCH.shaders));
+	}
+
+	RENDER_BATCH.shaders[RENDER_BATCH.num_shaders] = shader_prog;
+	u32 idx = RENDER_BATCH.num_shaders;
+	RENDER_BATCH.num_shaders += 1;
+	
+    return idx;
+}
+
+
+
+
+void chglDeleteShaderProgram(GLuint shader_prog) {
 	glDeleteProgram(shader_prog);
 }
+
+
+
+
+
 
 
 
@@ -187,9 +233,11 @@ clError InitCHlib(u32 win_w, u32 win_h, const char* title) {
 	
 	GLFWwindow* window = chglInitGLFW(win_w, win_h, title);
 	if (window == NULL) {
-		fprintf(stderr, "[ERROR] (CHGL) Could not initialize GLFW.\n");
+		LOG_MESSAGE(LOG_ERROR, "(CHGL) Could not initialize GLFW.\n");
 		return CL_ERROR;
 	}
+
+	LOG_MESSAGE(LOG_INFO, "(CHGL) GLFW initialized.\n");
 
 	GLOBAL_STATE.window_handle = window;
     GLOBAL_STATE.win_w = win_w;
@@ -198,11 +246,14 @@ clError InitCHlib(u32 win_w, u32 win_h, const char* title) {
 	GLuint default_shader_prog = chglCreateDefaultShaderProgram();
 	GLOBAL_STATE.default_shader_prog = default_shader_prog;
 	glUseProgram(default_shader_prog);
+
+	LOG_MESSAGE(LOG_INFO, "(CHGL) Default shader program loaded.\n");
 	
 	// set rest of global state variables to defaults
 	GLOBAL_STATE.current_bg_color = colorRGBANormalize(CL_DEFAULT_BG_COLOR);
 
 	chglRenderBatchInit();
+	LOG_MESSAGE(LOG_INFO, "(CHGL) Render Batch initialized.\n");
 	
 	GLOBAL_STATE.is_initialized = true;
 	return CL_OKAY;
@@ -228,13 +279,18 @@ clError RenderAll() {
 
 clError DeinitCHlib() {
 	if (!GLOBAL_STATE.is_initialized) {
-		fprintf(stderr, "[ERROR] CHlib is not initialized.\n");
+		LOG_MESSAGE(LOG_ERROR, "CHlig is not initialized.\n");
 		return CL_ERROR;
 	}
 
-	chglDeleteDefaultShaderProgram(GLOBAL_STATE.default_shader_prog);
-	chglDeinitGLFW(GLOBAL_STATE.window_handle);
+	chglDeleteShaderProgram(GLOBAL_STATE.default_shader_prog);
+	LOG_MESSAGE(LOG_INFO, "(DeinitCHlib) Default shader program deleted.\n");
 	chglRenderBatchDeinit();
+	LOG_MESSAGE(LOG_INFO, "(DeinitCHlib) Render batch deinitialized.\n");
+	chglDeinitGLFW(GLOBAL_STATE.window_handle);
+	LOG_MESSAGE(LOG_INFO, "(DeinitCHlib) GLFW deinitialized.\n");
+	
+	
 	return CL_OKAY;
 }
 
@@ -257,252 +313,266 @@ clError SetBackgroundColor(clColorRGBAu8 color) {
 
 
 
-
-
-
-
-clBool IsKeyDown(u32 key) {
-	return (glfwGetKey(GLOBAL_STATE.window_handle, key) == GLFW_PRESS);
-}
-
-
-
-
-
-
 RenderBatch RENDER_BATCH = { 0 };
-static u8 id;
+static u8 RO_ID;
 
 
 
 clError chglRenderBatchInit() {
-	id = 0;
+	RO_ID = 0;
 	
-	// RENDER_BATCH = { 0 } takes care of this in principle
-	// but just to be safe
-	// it's only called once, anyways
-	for (int i=0; i<16; i++) {
-		RENDER_BATCH.shapes[i] = (Shape){ 0 };
-	}
-	RENDER_BATCH.num_shapes = 0;
+    RENDER_BATCH.ros = malloc(CL_RB_DEFAULT_SIZE * (sizeof *RENDER_BATCH.ros));
+	RENDER_BATCH.ros_cap = CL_RB_DEFAULT_SIZE;
+	RENDER_BATCH.num_ros = 0;
+
+	RENDER_BATCH.shaders = malloc(CL_RB_DEFAULT_SIZE * (sizeof *RENDER_BATCH.shaders));
+	RENDER_BATCH.shaders_cap = CL_RB_DEFAULT_SIZE;
+	RENDER_BATCH.num_shaders = 0;
+	
+	
 	return CL_OKAY;
 }
 
 
 void chglRenderBatchDeinit() {
-    for (int i=0; i<RENDER_BATCH.num_shapes; i++) {
-		RenderObject ro = RENDER_BATCH.shapes[i].ro;
-		free(ro.vertices);
-		free(ro.elements);
+
+    for (int i=0; i<RENDER_BATCH.num_shaders; i++) {
+		chglDeleteShaderProgram(RENDER_BATCH.shaders[i]);
+	}
+	free(RENDER_BATCH.shaders);
+
+	for (int i=0; i<RENDER_BATCH.num_ros; i++) {
+		RenderObject* ro = &RENDER_BATCH.ros[i];
+		free(ro->vertices);
+	}
+	free(RENDER_BATCH.ros);
+}
+
+
+void chglAddRenderObject(RenderObject ro) {
+	if (RENDER_BATCH.num_ros == RENDER_BATCH.ros_cap) {
+		RENDER_BATCH.ros_cap *= 2;
+		RENDER_BATCH.ros = realloc(RENDER_BATCH.ros, RENDER_BATCH.ros_cap * (sizeof *RENDER_BATCH.ros));
+	}
+	RENDER_BATCH.ros[RENDER_BATCH.num_ros] = ro;
+	RENDER_BATCH.num_ros++;
+}
+
+
+
+void chglRenderBatchRenderAll() {
+	for (u8 i=0; i<RENDER_BATCH.num_ros; i++) {
+		RenderObject* ro = &RENDER_BATCH.ros[i];
+		ro->render_fn(ro);
 	}
 }
 
 
 
-clBool chglAreRenderObjectsIdentical(
-    RenderObject* ro,
-    f32* vertices_proposed,
-    u32* elements_proposed,
-    clColorRGBAf color_proposed
-) {
-	clBool is_identical = true;
 
-	// we don't want to check the colors since 
-	// at this stage that won't be happening,
-	// and it wil be sufficient to only check the actual GPU data
-	// additionally, the elements will be the same for any rectangle
-	
-	for (int i=0; i<CL_DEFSHDR_NUM_VERTICES; i++) {
-		is_identical = is_identical & (vertices_proposed[i] - ro->vertices[i] < CL_MIN_FLOAT_THRESHOLD);
-	}
-	if (is_identical) {
-		fprintf(stderr, "[INFO] Proposed render object vertices are the same as [ID = %u].\n", ro->id);
-	}
 
-	return is_identical;
-	
+void pGridRender(RenderObject* ro) {
+	glUseProgram(RENDER_BATCH.shaders[ro->shader_id]);
+	glBindVertexArray(ro->vao);
+	// glActiveTexture(GL_TEXTURE0); // not necessary as only texture
+	glBindTexture(GL_TEXTURE_2D, ro->tex2d);
+
+	// nice substitute for EBO's!
+	// but it might not work...
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 
-
-BatchProposal chglProposeRenderObject(f32* vertices, u32* elements, clColorRGBAf color) {
-	
-	// before we do anything, we want to check if an identical object already exists
-	// or if we are already full on objects
-	for (int i=0; i<RENDER_BATCH.num_shapes; i++) {
-		RenderObject ro = RENDER_BATCH.shapes[i].ro;
-		clBool is_identical = chglAreRenderObjectsIdentical(&ro, vertices, elements, color);
-		clBool at_cap = RENDER_BATCH.num_shapes == 16;
-		if (is_identical || at_cap) {
-			LOG_MESSAGE(LOG_INFO, "Render object rejected.\n");
-			return (BatchProposal){
-				.is_valid = false,
-				.ro = { 0 },
-			};
-		}
+void MakeGrid(u32 w, u32 h, clColorRGBAu8* colors) {
+	// load in the grid shader stuff
+	u8* vs_data = readFileData(CL_GRID_SHDR_VS_PATH);	
+	u8* fs_data = readFileData(CL_GRID_SHDR_FS_PATH);
+	if (vs_data == NULL || fs_data == NULL) {
+		LOG_MESSAGE(LOG_ERROR, "(MakeGrid) Failed to load data from shader files.\n");
+		return;
 	}
-	// otherwise, on with it!
-	
-	
-	RenderObject ro = { 0 };
-	GLuint vao, vbo, ebo;
+	GLuint shader_prog = chglCreateShaderProgram(vs_data, fs_data);
 
+	u32 shader_id = chglAddShaderProgram(shader_prog);
+
+	LOG_MESSAGE(LOG_INFO, "(MakeGrid) Grid shader loaded.\n");
+
+	// no longer need the raw file data
+	free(vs_data);
+	free(fs_data);
+
+	// we need to turn the colors into an array of bytes
+	u8* tex_data = NULL;
+	tex_data = malloc((w*h * 4) * (sizeof *tex_data));
+	for (int i=0, j=0; i<(w*h * 4); i+=4, j++) {
+		tex_data[i] = colors[j].r;
+		tex_data[i+1] = colors[j].g;
+		tex_data[i+2] = colors[j].b;
+		tex_data[i+3] = colors[j].a;
+	}
+
+	LOG_MESSAGE(LOG_INFO, "(MakeGrid) Pixel data is given by:\n");
+	for (int i=0; i<w*h*4; i+=4) {
+		fprintf(stderr, "(%u,%u,%u,%u) ", tex_data[i], tex_data[i+1], tex_data[i+2], tex_data[i+3]);
+	}
+	printf("\n");
+
+	// now create a texture with it
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex_data);
+	// must do nearest so that it is actually a grid
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	LOG_MESSAGE(LOG_INFO, "(MakeGrid) Grid texture created and loaded.\n");
+	
+	// with this shader program and texture stuff
+	// we just need to render a quad to the screen
+	// need the GLFW screen coords for the quad itself
+	// then the image/texture/UV coords
+	// which are 0,0 at bottom left
+	
+	f32 _vertices[] = {
+		// screen coords   // UV coords
+		-1.0,  1.0,        0.0, 1.0,  // top-left
+		 1.0,  1.0,        1.0, 1.0,   // top-right
+		 1.0, -1.0,        1.0, 0.0,   // bottom-right
+		-1.0, -1.0,        0.0, 0.0   // bottom-left
+	};
+	f32* vertices = malloc(sizeof _vertices);
+	memcpy(vertices, _vertices, sizeof _vertices);
+	
+	GLuint vao, vbo;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	
-	u32 vertex_buffer_size = CL_DEFSHDR_NUM_VERTICES * (sizeof *vertices);
-	u32 element_buffer_size = CL_DEFSHDR_NUM_ELEMENTS * (sizeof *elements);
-    
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertices, GL_STATIC_DRAW);
+	// here we have to use the original array rather than the malloced pointer to more accurately get the size
+	glBufferData(GL_ARRAY_BUFFER, sizeof _vertices, _vertices, GL_STATIC_DRAW);
 
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, element_buffer_size, elements, GL_STATIC_DRAW);
-   
-	glEnableVertexAttribArray(CL_DEFSHDR_POS_LOC);
-	glVertexAttribPointer(CL_DEFSHDR_POS_LOC, 2, GL_FLOAT, GL_FALSE, 2 * (sizeof *vertices), (void*)0);
-	
-	ro.id = id++;
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * (sizeof *vertices), (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * (sizeof *vertices), (void*)(2 * (sizeof *vertices)));
+
+	LOG_MESSAGE(LOG_INFO, "(MakeGrid) Vertex array object created / vertex data loaded.\n");
+
+
+
+	// Make a Render Object with this data
+	// and add it to the batch
+	RenderObject ro = { 0 };
+	ro.id = RO_ID++;
+	ro.shader_id = shader_id;
 	ro.vao = vao;
-	ro.vbo = vbo;
-	ro.ebo = ebo;
-	ro.color = color;
+	ro.vertices = vertices;
+	ro.tex2d = tex;
+	ro.render_fn = pGridRender;
 
-	ro.vertices = malloc(vertex_buffer_size);
-	memcpy(ro.vertices, vertices, vertex_buffer_size);
-
-	ro.elements = malloc(element_buffer_size);
-	memcpy(ro.elements, elements, element_buffer_size);
-
-	return (BatchProposal){
-		.is_valid = true,
-		.ro = ro,
-	};
+	chglAddRenderObject(ro);
+	LOG_MESSAGE(LOG_INFO, "(MakeGrid) Grid RO added to batch.\n");
 }
 
 
 
 
-clError chglRenderBatchAddShape(Shape shape) {
-	fprintf(stderr, "[INFO]Adding shape:\n");
-	chglPrintShape(shape);
-	RENDER_BATCH.shapes[RENDER_BATCH.num_shapes++] = shape;
-	
-	return CL_OKAY;
-}
+RenderObject rectBuffer[MAX_RECTBUFFER_SIZE] = { 0 };
+u8 numRectangles = 0;
 
 
-
-
-clError chglRenderBatchRenderAll() {
-	for (u8 i=0; i<RENDER_BATCH.num_shapes; i++) {
-		RenderObject ro = RENDER_BATCH.shapes[i].ro;
-
-		glUseProgram(GLOBAL_STATE.default_shader_prog);
-		
-		glBindVertexArray(ro.vao);
-		glUniform3f(CL_DEFSHDR_COLOR_LOC, ro.color.r, ro.color.g, ro.color.b);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+u32 chglInitRectangles() {
+	u8* vs_data = readFileData(CL_RECT_VS_SHADER);	
+	u8* fs_data = readFileData(CL_RECT_FS_SHADER);
+	if (vs_data == NULL || fs_data == NULL) {
+		LOG_MESSAGE(LOG_ERROR, "(MakeGrid) Failed to load rectangle shader files.\n");
+		return 0;
 	}
-	return CL_OKAY;
+	GLuint shader_prog = chglCreateShaderProgram(vs_data, fs_data);
+	u32 shader_idx = chglAddShaderProgram(shader_prog);
+
+	return shader_idx;
+}
+
+void pRectRender(RenderObject* ro) {
+	glUseProgram(RENDER_BATCH.shaders[ro->shader_id]);
+
+	glBindVertexArray(ro->vao);
+
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 
 
-Shape chglMakeRect(RenderObject ro, f32 x, f32 y, f32 w, f32 h) {
-	Shape shape = { 0 };
-	shape.ro = ro;
-	shape.shape_type = SHAPE_RECTANGLE;
-	shape.x = x;
-	shape.y = y;
-	shape.w = w;
-	shape.h = h;
-
-	return shape;
-}
-
-
-void chglPrintShape(Shape shape) {
-	printf("---------- SHAPE ----------\n");
-	printf("VAO: %u, VBO: %u, EBO: %u\n", shape.ro.vao, shape.ro.vbo, shape.ro.ebo);
-	printf("Type: ");
-	if (shape.shape_type == SHAPE_RECTANGLE) {
-		printf("Rectangle\n");
-		printf("Pos: (%.2f, %.2f), Size: (%.2f, %.2f)\n", shape.x, shape.y, shape.w, shape.h);
-	} else if (shape.shape_type == SHAPE_CIRCLE) {
-		printf("Circle\n");
-		printf("Pos: (%.2f, %.2f), Radius: %.2f\n", shape.x, shape.y, shape.r);
+void DrawRectangle(u32 _x, u32 _y, u32 _w, u32 _h, clColorRGBAu8 _color) {
+	// first check to make sure we aren't over count
+	if (numRectangles >= MAX_RECTBUFFER_SIZE) {
+		LOG_MESSAGE(LOG_WARNING, "(DrawRectangle) Too many rectangles in buffer. This rectangle will not be drawn.\n");
+		return;
 	}
-	printf("Color: (r,g,b) -> (%.2f, %.2f, %.2f)\n", shape.ro.color.r, shape.ro.color.g, shape.ro.color.b);
-
-	printf("Raw vertex data: [ ");
-	for (int i=0; i<CL_DEFSHDR_NUM_VERTICES; i++) {
-		printf("%.2f ", shape.ro.vertices[i]);
+	// if this is the first rectangle we need to initialize stuff
+	u32 shader_idx;
+	if (numRectangles == 0) {
+		shader_idx = chglInitRectangles();
+	} else {
+		shader_idx = rectBuffer[0].shader_id;
 	}
-	printf("]\nRaw element data: [ ");
-	for (int i=0; i<CL_DEFSHDR_NUM_ELEMENTS; i++) {
-		printf("%u ", shape.ro.elements[i]);
-	}
-	printf("]\n");
-	
-	
-	printf("--------------------\n");
-}
 
-
-clError DrawRectangle(u32 x, u32 y, u32 w, u32 h, clColorRGBAu8 _color) {
-	// bunch of normalizations!
-	clPoint2f pos = coordsWindowToGLFW(
-        (clPoint2u32){.x = x, .y = y},
-		GLOBAL_STATE.win_w, GLOBAL_STATE.win_h
-    );
-	clVec2f size = {
-		.w = (float)w/(float)GLOBAL_STATE.win_w,
-		.h = (float)h/(float)GLOBAL_STATE.win_h
-	};
-	clColorRGBAf color = colorRGBANormalize(_color);
-										
-	return DrawRectangleVec(pos, size, color);
-}
-
-
-
-
-clError DrawRectangleVec(clPoint2f pos, clVec2f size, clColorRGBAf color) {
-	
+	clPoint2f pos = coordsWindowToGLFW((clPoint2u32){.x = _x, .y = _y});
 	f32 x = pos.x, y = pos.y;
+	clPoint2f size = (clPoint2f){
+		.w = (f32)_w/(f32)GLOBAL_STATE.win_w,
+		.h = (f32)_h/(f32)GLOBAL_STATE.win_h,
+	};
 	f32 w = size.w, h = size.h;
-	f32 r = color.r, g = color.g, b = color.b;
 
-	// some error checking
-	if ((x < -1.0f || y < -1.0f) || (x+w > 1.0f || y+h > 1.0f) || (r > 1.0f || g > 1.0f || b > 1.0f)) {
-		fprintf(stderr, "[ERROR] Invalid rectangle dimensions/color.\n");
-		return CL_ERROR;
-	}
+	clColorRGBAf color = colorRGBANormalize(_color);
 
-	f32 vertices[] = {
-	    x+w, y+h,
-		x+w, y  ,
-		x  , y  ,
-		x  , y+h,
+	LOG_MESSAGE(LOG_WARNING, "(DrawRectangle) Rectangle attributes are:\n");
+	fprintf(stderr, "Pos: (%.2f, %.2f),  Size: (%.2f, %.2f),  Color: (%.2f, %.2f, %.2f)\n", x, y, w, h, color.r, color.g, color.b);
+
+
+	f32 _vertices[] = {
+		x  , y  , color.r, color.g, color.b,
+		x  , y+h, color.r, color.g, color.b,
+		x+w, y+h, color.r, color.g, color.b,
+		x+w, y  , color.r, color.g, color.b,
 	};
-	u32 elements[] = {
-		0, 1, 3,
-		1, 2, 3
-	};
+	f32* vertices = NULL;
+	// 4 indices, 2 coords, 3 color vals
+	vertices = malloc(sizeof _vertices);
+    memcpy(vertices, _vertices, sizeof _vertices);
 
-	BatchProposal proposal = chglProposeRenderObject(vertices, elements, color);
+	GLuint vao, vbo;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 
-	if (!proposal.is_valid) {
-		fprintf(stderr, "[INFO] Invalid batch proposal.\n");
-		return CL_OKAY;
-	}
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof _vertices, _vertices, GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * (sizeof *vertices), (void*)0);
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * (sizeof *vertices), (void*)(2 * (sizeof *vertices)));
+
 	
-	Shape rect = chglMakeRect(proposal.ro, x, y, w, h);
-	chglRenderBatchAddShape(rect);
 
-	return CL_OKAY;
+	
+	RenderObject ro = { 0 };
+	ro.id = RO_ID++;
+	ro.shader_id = shader_idx;
+	ro.color = color;
+    ro.vao = vao; ro.vbo = vbo;
+	ro.vertices = vertices;
+	ro.render_fn = pRectRender;
+
+	chglAddRenderObject(ro);
+	LOG_MESSAGE(LOG_INFO, "(DrawRectangle) Rectangle RO added to batch.\n");
+	numRectangles++;
 }
+ 
