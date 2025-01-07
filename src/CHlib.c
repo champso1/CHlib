@@ -480,11 +480,7 @@ void MakeGrid(u32 w, u32 h, clColorRGBAu8* colors) {
 
 
 
-RenderObject rectBuffer[MAX_RECTBUFFER_SIZE] = { 0 };
-u8 numRectangles = 0;
-
-
-u32 chglInitRectangles() {
+static u32 chglInitRectangles() {
 	u8* vs_data = readFileData(CL_RECT_VS_SHADER);	
 	u8* fs_data = readFileData(CL_RECT_FS_SHADER);
 	if (vs_data == NULL || fs_data == NULL) {
@@ -497,82 +493,4 @@ u32 chglInitRectangles() {
 	return shader_idx;
 }
 
-void pRectRender(RenderObject* ro) {
-	glUseProgram(RENDER_BATCH.shaders[ro->shader_id]);
 
-	glBindVertexArray(ro->vao);
-
-	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-}
-
-
-
-void DrawRectangle(u32 _x, u32 _y, u32 _w, u32 _h, clColorRGBAu8 _color) {
-	// first check to make sure we aren't over count
-	if (numRectangles >= MAX_RECTBUFFER_SIZE) {
-		LOG_MESSAGE(LOG_WARNING, "(DrawRectangle) Too many rectangles in buffer. This rectangle will not be drawn.\n");
-		return;
-	}
-	// if this is the first rectangle we need to initialize stuff
-	u32 shader_idx;
-	if (numRectangles == 0) {
-		shader_idx = chglInitRectangles();
-	} else {
-		shader_idx = rectBuffer[0].shader_id;
-	}
-
-	clPoint2f pos = coordsWindowToGLFW((clPoint2u32){.x = _x, .y = _y});
-	f32 x = pos.x, y = pos.y;
-	clPoint2f size = (clPoint2f){
-		.w = (f32)_w/(f32)GLOBAL_STATE.win_w,
-		.h = (f32)_h/(f32)GLOBAL_STATE.win_h,
-	};
-	f32 w = size.w, h = size.h;
-
-	clColorRGBAf color = colorRGBANormalize(_color);
-
-	LOG_MESSAGE(LOG_WARNING, "(DrawRectangle) Rectangle attributes are:\n");
-	fprintf(stderr, "Pos: (%.2f, %.2f),  Size: (%.2f, %.2f),  Color: (%.2f, %.2f, %.2f)\n", x, y, w, h, color.r, color.g, color.b);
-
-
-	f32 _vertices[] = {
-		x  , y  , color.r, color.g, color.b,
-		x  , y+h, color.r, color.g, color.b,
-		x+w, y+h, color.r, color.g, color.b,
-		x+w, y  , color.r, color.g, color.b,
-	};
-	f32* vertices = NULL;
-	// 4 indices, 2 coords, 3 color vals
-	vertices = malloc(sizeof _vertices);
-    memcpy(vertices, _vertices, sizeof _vertices);
-
-	GLuint vao, vbo;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof _vertices, _vertices, GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * (sizeof *vertices), (void*)0);
-
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * (sizeof *vertices), (void*)(2 * (sizeof *vertices)));
-
-	
-
-	
-	RenderObject ro = { 0 };
-	ro.id = RO_ID++;
-	ro.shader_id = shader_idx;
-	ro.color = color;
-    ro.vao = vao; ro.vbo = vbo;
-	ro.vertices = vertices;
-	ro.render_fn = pRectRender;
-
-	chglAddRenderObject(ro);
-	LOG_MESSAGE(LOG_INFO, "(DrawRectangle) Rectangle RO added to batch.\n");
-	numRectangles++;
-}
- 

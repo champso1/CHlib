@@ -122,7 +122,7 @@ typedef struct _clVec4f clColorRGBAf;
 
 
 // used when comparing floats
-#define CL_MIN_FLOAT_THRESHOLD 0.00001F
+#define CL_MIN_FLOAT_THRESHOLD 0.00001f
 
 
 
@@ -493,23 +493,20 @@ extern void MakeGrid(u32 w, u32 h, clColorRGBAu8* colors);
 
 
 
-#define CL_RECT_VS_SHADER "./res/rect.vs"
-#define CL_RECT_FS_SHADER "./res/rect.fs"
-
-#define MAX_RECTBUFFER_SIZE 8
-extern RenderObject rectBuffer[MAX_RECTBUFFER_SIZE];
-extern u8 numRectangles;
+#define CL_RECT_VS_SHADER "./res/rect.vert"
+#define CL_RECT_FS_SHADER "./res/rect.frag"
 
 
-// loads shaders
-extern u32 chglInitRectangles();
 
-extern void pRectRender(RenderObject* ro);
 
-// draws a rectangle to the screen.
-// NOTE: assumes that the use calls this only once,
-// and especially not in the render loop!
-extern void DrawRectangle(u32 x, u32 y, u32 w, u32 h, clColorRGBAu8 color);
+
+
+
+
+
+
+
+
 
 
 

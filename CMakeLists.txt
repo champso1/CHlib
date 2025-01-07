@@ -23,7 +23,7 @@ target_link_directories(CHlib PUBLIC
 )
 
 # we need to link with libglfw3 and libm(ath)
-target_link_libraries(CHlib glfw3 m)
+target_link_libraries(CHlib glfw m)
 
 # gives us CMAKE_INSTALL_<x>DIR
 # that is set by CMAKE_INSTALL_PREFIX
