@@ -1,11 +1,11 @@
-#ifndef _CHLIB_H
-#define _CHLIB_H
+#ifndef __CHLIB_H
+#define __CHLIB_H
 
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-
+#include "Utils.h"
 
 
 
@@ -21,16 +21,6 @@
 // --------------------
 //       TYPES
 // --------------------
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long u64;
-
-typedef char i8;
-typedef short i16;
-typedef int i32;
-typedef long i64;
 
 typedef float f32;
 typedef double f64;
@@ -70,8 +60,8 @@ typedef struct _clVec2u32 clPoint2u32;
 
 struct _clVec3f {
 	union {
-		struct { float x, y, z; };
-		struct { float r, g, b; };
+		struct { f32 x, y, z; };
+		struct { f32 r, g, b; };
 	};
 };
 typedef struct _clVec3f clVec3f;
@@ -103,7 +93,7 @@ typedef struct _clVec4u8 clColorRGBAu8;
 
 
 struct _clVec4f {
-	float r, g, b, a;
+	f32 r, g, b, a;
 };
 typedef struct _clVec4f clVec4f;
 typedef struct _clVec4f clColorRGBAf;
@@ -299,8 +289,8 @@ typedef struct _clGlobalState {
 	clBool is_initialized;
 	GLFWwindow* window_handle;
 
-	int win_w;
-	int win_h;
+	u32 win_w;
+	u32 win_h;
 
 	clColorRGBAf current_bg_color;
 } clGlobalState;
@@ -511,4 +501,4 @@ extern void MakeGrid(u32 w, u32 h, clColorRGBAu8* colors);
 
 
 
-#endif // _CHLIB_H
+#endif // __CHLIB_H

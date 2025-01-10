@@ -1,5 +1,5 @@
-#ifndef _UTILS_H_
-#define _UTILS_H_
+#ifndef __UTILS_H_
+#define __UTILS_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +27,10 @@ typedef unsigned int LOG_CODE;
 
 
 
+#define PTR_ASSERT(ptr, ...) if(!(ptr)) {fprintf(stderr, __VA_ARGS__); exit(1);}
+
+
+
 #define LOG_MESSAGE(code, ...)											\
 	do {																\
 		if ((code) == LOG_INFO)	{										\
@@ -40,46 +44,29 @@ typedef unsigned int LOG_CODE;
 
 
 
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long u64;
 
-unsigned char* readFileData(const char* file_path) {
-	size_t file_size;
+typedef char i8;
+typedef short i16;
+typedef int i32;
+typedef long i64;
 
-	// open in binary and use seek fn's to get the total size
-	FILE* file = fopen(file_path, "rb");
-	if (file == NULL) {
-		LOG_MESSAGE(LOG_ERROR, "(readFileData) Could not open file in binary mode: %s.\n", file_path);
-		return NULL;
-	}
-	fseek(file, 0, SEEK_END);
-	file_size = ftell(file);
-	fclose(file); file = NULL;
+typedef float f32;
+typedef double f64;
 
-	// allocate memory and fill with null characters
-	char* buf = NULL;
-	buf = malloc((file_size+1) * (sizeof *buf));
-	memset(buf, '\0', file_size+1);
-	
-	// reopen in normal reading mode and read the contents
-	file = fopen(file_path, "r");
-	fseek(file, 0, SEEK_SET);
-	if (file == NULL) {
-		LOG_MESSAGE(LOG_ERROR, "(readFileData) Could not open file to read contents: %s.\n", file_path);
-		return NULL;
-	}
-	fread(buf, 1, file_size, file);
-	fclose(file);
 
-	LOG_MESSAGE(LOG_INFO, "(readFileData) File contents are:\n");
-	fprintf(stderr, "%s\n", buf);
+typedef const char* str;
 
-	return buf;
-}
+
+
+
+extern u32 readFile(str filePath, u8** buf);
 
 
 
 
 
-
-
-
-#endif // #define _UTILS_H_
+#endif // #define __UTILS_H_

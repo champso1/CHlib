@@ -18,8 +18,8 @@
 
 clPoint2f coordsWindowToGLFW(clPoint2u32 in) {
 	clPoint2f vec = {
-		.x = (float)in.x/(float)(GLOBAL_STATE.win_w/2) - 1.0f,
-		.y = (float)in.y/(float)(GLOBAL_STATE.win_h/2) - 1.0f
+		.x = (float)in.x/((float)GLOBAL_STATE.win_w/2.0f) - 1.0f,
+		.y = (float)in.y/((float)GLOBAL_STATE.win_h/2.0f) - 1.0f
 	};
 	return vec;
 }
@@ -121,7 +121,7 @@ void chglDeinitGLFW(GLFWwindow* window) {
 
 
 GLuint chglCreateShaderProgram(const u8* vs_data, const u8* fs_data) {
-	GLuint success = 0;
+	GLint success = 0;
     char infoLog[512] = "";
 
     const GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -158,7 +158,7 @@ GLuint chglCreateShaderProgram(const u8* vs_data, const u8* fs_data) {
 		LOG_MESSAGE(LOG_INFO, "Reason(s) for above error(s):\n%s", infoLog);
         exit(1);
     }
-    
+	
     glDeleteShader(vs);
     glDeleteShader(fs);
 
@@ -172,13 +172,13 @@ GLuint chglCreateShaderProgram(const u8* vs_data, const u8* fs_data) {
 
 
 GLuint chglCreateDefaultShaderProgram() {
-	const char* default_vs_data =
+	const unsigned char* default_vs_data =
 		"#version 430 core\n"
 		"layout (location = 0) in vec2 v_in_pos;\n"
 		"void main() {\n"
 		"    gl_Position = vec4(v_in_pos, 0.0, 1.0);\n"
 		"}";
-	const char* default_fs_data =
+	const unsigned char* default_fs_data =
 		"#version 430 core\n"
 		"layout (location = 1) uniform vec3 u_color;\n"
 		"out vec4 out_color;\n"

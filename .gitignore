@@ -1,5 +1,12 @@
 install/
 build
 res/
-*#*
 tests/
+
+*#*
+.clang-format
+.cache/
+
+GTAGS
+GRTAGS
+GPATH
