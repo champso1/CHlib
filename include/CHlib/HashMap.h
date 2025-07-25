@@ -18,23 +18,29 @@
 
 
 /// I did it this way to more easily decide whether a slot was filled or not.
-typedef struct _HashTableEntry {
+typedef struct _HashTableEntry
+{
 	int val;
-	enum {
-		EMPTY = 0,
-		FILLED,
+	enum
+	{
+		HM_EMPTY = 0,
+		HM_FILLED,
 	} type;
 } HashTableEntry;
 
 
-typedef struct _HashMap {
-	int numElements;
-	HashTableEntry hashTable[HASHTABLE_SIZE];
+typedef struct _HashMap
+{
+	int len;
+	HashTableEntry *table;
 } HashMap;
 
 
 /// Initializes a hashmap with all zeros (unfilled slots).
 extern HashMap hmInit();
+
+/// frees malloced data
+extern void hmDeinit();
 
 /// Adds a string,int pair to the has table, with the strings being keys
 /// Returns 1 if key exists (considered an error), 0 on success

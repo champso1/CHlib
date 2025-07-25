@@ -1,12 +1,21 @@
-cmake_minimum_required(VERSION 3.20)
-project(CHlib VERSION 0.0.1)
+cmake_minimum_required(VERSION 3.30)
+project(CHlib VERSION 0.1.0)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 
 # grab all the source files
-file(GLOB_RECURSE sources   src/*.c include/*.h)
+file(GLOB_RECURSE sources src/*.c include/*.h)
 
 # we build a static library.
 add_library(CHlib STATIC ${sources})
+
+# add all warnings
+if(MSVC)
+  target_compile_options(CHlib PRIVATE /W4 /WX)
+else()
+  target_compile_options(CHlib PRIVATE -Wall -Wextra)
+endif()
+
 
 # we setup the include directories
 # since public, meaning other projects that find this package,
@@ -22,8 +31,17 @@ target_link_directories(CHlib PUBLIC
   $<INSTALL_INTERFACE:lib>
 )
 
-# we need to link with libglfw3 and libm(ath)
-target_link_libraries(CHlib glfw m)
+# we need to link with libglfw and libm
+if (UNIX)
+  message("-- Building for Unix")
+  target_link_libraries(CHlib PUBLIC glfw m)
+elseif (WIN32)
+  message("-- Building for Windows")
+  target_link_libraries(CHlib PUBLIC glfw3)
+endif()
+
+# build examples
+add_subdirectory(examples)
 
 # gives us CMAKE_INSTALL_<x>DIR
 # that is set by CMAKE_INSTALL_PREFIX
@@ -41,7 +59,6 @@ install(TARGETS CHlib
 # installs the export set as well
 install(EXPORT CHlibTargets
   FILE CHlibTargets.cmake
-  NAMESPACE CHlib::
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CHlib
 )
 
@@ -52,7 +69,7 @@ install(EXPORT CHlibTargets
 # it also will include the exported targets
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/share/cmake/Config.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/CHlibConfig.cmake
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CHlib
 )

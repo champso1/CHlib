@@ -42,11 +42,10 @@ There is certainly a lot to do for this project. Despite the comment made at the
 These are straight-forward things that are a one-and-done.
 
 - [ ] Implement a batch-like system for rendering objects (I believe this is roughly how Raylib does it).
-- This is implemented, you could say, but more testing would have to be done for more use cases definitely.
-- [ ] Implement rendering of shapes.
-- Rectangles are done.
+- [ ] Implement rendering of shapes, rectangles first.
 - [ ] Have a different interface for specifying callbacks that doesn't make the user interact with glfw or GL in any way.
 - [ ] Text rendering!
+- [ ] Switch to CPP (see [Notes](#notes))
 
 
 ## Abstract Things
@@ -54,4 +53,11 @@ These are less straight-forward and are essentially stylistic and other non-impo
 
 - [ ] Consider how to better handle errors. I may consider a sort of error union/optional type thing like Zig.
 - [ ] Consider what I want to do about naming.
-- * Specifically about prefixes of functions/types I want to keep hidden. For instance, a.t.m. `chgl` is the prefix for internal functions that interact with glfw/GL, as well as for all types. I may want to change this to avoid confusion.
+- * Specifically about prefixes of functions/types I want to keep hidden. For instance, a.t.m. `cl` is the prefix for internal functions that interact with glfw/GL, as well as for all types. I may want to change this to avoid confusion.
+
+## Notes
+There are two things worth mentioning, one being that this project was put off for several (I think over 7) months, and along with this, I've been doing more development on my Windows machine with MSYS2 tools (previously this had only been worked on with my Linux machine). To get things working I have had to do a lot of reworking, including completely removing rectangles (which previously worked, I believe). So, again, those have to be reworked a bunch.
+
+Next, my previous opinion towards C++ was fairly poor; the STL was just so extremely daunting, especially past C++11, but after having used C++ for a relatively large project and currently doing C++ for my theoretical physics research, I've grown more accustomed to it. To be more specific, I've come to accept that I'll simply never fully understand the STL in its entirety, but the basic things I do know and the basic things that come with C++ as opposed to C (mainly generics and classes and such) are good enough. With this, I am probably next going to convert everything here to CPP. This also allows GLM to be used as intended and not having a dependency on CGLM; it allows my entire custom hashmap to be removed in favor of `std::map`, and so on. Some other things with strings and files become easier, it will allow for more generic programming in the future, it will allow easier error and memory handling, and so on.
+
+This isn't that I enjoy pure C any less; I find it very fascinating working with raw memory and doing many things manually. At some point I'll make my own C library with a lot of the basic things in the C++ STL, like better string/file control, logging/error handling, and so on, and maybe do some other substantial project in the future with that. But for this, I simply think it'd be more fun with C++. This was more than just a "note", but oh well.

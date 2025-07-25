@@ -1,12 +1,14 @@
 install/
 build
-res/
 tests/
 
 *#*
 .clang-format
 .cache/
+.vscode
 
 GTAGS
 GRTAGS
 GPATH
+
+Notes.txt

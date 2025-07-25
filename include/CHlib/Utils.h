@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "CHlib/Common.h"
+
 
 // colors for printing to the terminal
 #define ANSI_COLOR_RED         "\x1b[31m"
@@ -27,10 +29,6 @@ typedef unsigned int LOG_CODE;
 
 
 
-#define PTR_ASSERT(ptr, ...) if(!(ptr)) {fprintf(stderr, __VA_ARGS__); exit(1);}
-
-
-
 #define LOG_MESSAGE(code, ...)											\
 	do {																\
 		if ((code) == LOG_INFO)	{										\
@@ -41,6 +39,13 @@ typedef unsigned int LOG_CODE;
 				fprintf(stderr, ANSI_COLOR_RED "[ERROR] " ANSI_COLOR_RESET); \
 			} fprintf(stderr, __VA_ARGS__);								\
 	} while (0)
+
+
+
+
+#define PTR_ASSERT(ptr, ...) if(!(ptr)) {LOG_MESSAGE(LOG_ERROR, __VA_ARGS__); exit(1);}
+
+
 
 
 
@@ -63,7 +68,7 @@ typedef const char* str;
 
 
 
-extern u32 readFile(str filePath, u8** buf);
+extern i32 readFile(str filePath, u8** buf);
 
 
 

@@ -1,28 +1,33 @@
-#include "Utils.h"
+#include "CHlib/Utils.h"
 
 
-u32 readFile(str filePath, u8** buf) {
+i32 readFile(str file_path, u8** buf) {
 	// first we want to get the size
-    FILE* file = NULL;
-	file = fopen(filePath, "rb");
-	PTR_ASSERT(file, "[ERROR] Could not open file: %s\n", filePath);
+    FILE* file = null;
+	file = fopen(file_path, "rb");
+	if (file == null)
+		return -1;
 	
 	fseek(file, 0, SEEK_END);
-    u32 fileSize = ftell(file);
+    u32 file_size = ftell(file);
     fclose(file);
 
 	// then allocate a buffer with the given size
-	u8* fileBuf = NULL;
-	fileBuf = malloc(fileSize * (sizeof *fileBuf) + 1); // +1 for null character
-	PTR_ASSERT(fileBuf, "[ERROR] Could not allocate memory for file buffer.\n");
-	memset(fileBuf, '\0', fileSize + 1);
+	u8* file_buf = null;
+	file_buf = malloc(file_size * (sizeof *file_buf) + 1); // +1 for null character
+	if (file_buf == null)
+		return -2;
 
-	file = fopen(filePath, "r");
-	PTR_ASSERT(file, "[ERROR] Could not reopen file in text mode.\n");
-	fread(fileBuf, sizeof *fileBuf, fileSize, file);
+	memset(file_buf, '\0', file_size + 1);
+
+	file = fopen(file_path, "r");
+	if (file == null)
+		return -3;
+
+	fread(file_buf, sizeof *file_buf, file_size, file);
 	fclose(file);
 
-	*buf = fileBuf;
-	return fileSize;
+	*buf = file_buf;
+	return file_size;
 }
 

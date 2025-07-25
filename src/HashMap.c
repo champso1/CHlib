@@ -1,18 +1,27 @@
-#include "HashMap.h"
+#include "CHlib/HashMap.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 
-HashMap hmInit() {
-
+HashMap hmInit()
+{
 	HashMap hm;
 	memset(&hm, 0, sizeof hm);
-	
+	hm.table = calloc(HASHTABLE_SIZE, sizeof *hm.table);
 	return hm;
 }
 
+void hmDeinit(HashMap hm)
+{
+	if (hm.table != NULL)
+		free(hm.table);
+}
 
+
+
+// hashing function
 static unsigned long __hash(unsigned char *str)
 {
     unsigned long hash = 5381;
@@ -26,31 +35,36 @@ static unsigned long __hash(unsigned char *str)
 
 
 
-int hmAdd(HashMap* map, const char* key, int val) {
-	unsigned long hashCode = __hash((unsigned char*)key);
-	if (map->hashTable[hashCode].type == FILLED) {
-		fprintf(stderr, "[WARNING] Hash table slot at index %ld is filled.\n", hashCode);
+int hmAdd(HashMap* map, const char* key, int val)
+{
+	unsigned long hash_code = __hash((unsigned char*)key);
+	if (map->table[hash_code].type == HM_FILLED)
+	{
+		fprintf(stderr, "[WARNING] Hash table slot at index %ld is filled.\n", hash_code);
 		return 1;
 	}
-	map->hashTable[hashCode] = (HashTableEntry){
+	map->table[hash_code] = (HashTableEntry){
 		.val = val,
-		.type = FILLED,
+		.type = HM_FILLED,
 	};
-	map->numElements += 1;
+	map->len += 1;
 	
 	return 0;
 }
 
 
-HashTableEntry hmGet(HashMap map, const char* key) {
-	unsigned long hashCode = __hash((unsigned char*)key);
-	return map.hashTable[hashCode];
+HashTableEntry hmGet(HashMap map, const char* key)
+{
+	unsigned long hash_code = __hash((unsigned char*)key);
+	return map.table[hash_code];
 }
 
 
 
-void hmPrint(HashTableEntry entry) {
-	if (entry.type == EMPTY) {
+void hmPrint(HashTableEntry entry)
+{
+	if (entry.type == HM_EMPTY)
+	{
 		fprintf(stderr, "[WARNING] This entry is empty.\n");
 		return;
 	}
